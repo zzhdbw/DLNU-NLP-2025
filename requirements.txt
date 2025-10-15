@@ -2,3 +2,6 @@ pandas
 tqdm
 jieba
 scikit-learn
+modelscope
+packaging
+datasets

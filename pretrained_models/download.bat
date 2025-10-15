@@ -1,0 +1,1 @@
+modelscope download --model google-bert/bert-base-chinese --local_dir ./bert-base-chinese 

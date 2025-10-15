@@ -68,45 +68,48 @@ def collate_fn(batch):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    data_path = "data\Simplified_Chinese_Multi-Emotion_Dialogue_Dataset\Simplified_Chinese_Multi-Emotion_Dialogue_Dataset.csv"
+    data_path = "output/train.json"
     max_len = 128
     word_dim = 300
     batch_size = 6
     learning_rate = 1e-3
-    epoch = 10
-    model_path = r"save\\Experiment_1\best_model.pth"
+    train_data_path = "processed_data/train.json"
+    word2id_path = "processed_data/word2id.json"
+    id2word_path = "processed_data/id2word.json"
+    label2id_path = "processed_data/label2id.json"
+    id2label_path = "processed_data/id2label.json"
+    model_path = "output/best_model.pth"
     ############################################################
-    data = pd.read_csv(data_path)
-    data = data.to_dict("records")
-
+    train_data = json.load(open(train_data_path, "r", encoding="utf-8"))
     label2id = json.load(
-        open("save/Experiment_1/label2id.json", "r", encoding="utf8"),
+        open(label2id_path, "r", encoding="utf8"),
     )
 
     id2label = json.load(
-        open("save/Experiment_1/id2label.json", "r", encoding="utf8"),
+        open(id2label_path, "r", encoding="utf8"),
     )
     word2id = json.load(
-        open("save/Experiment_1/word2id.json", "r", encoding="utf8"),
+        open(word2id_path, "r", encoding="utf8"),
     )
     id2word = json.load(
-        open("save/Experiment_1/id2word.json", "r", encoding="utf8"),
+        open(id2word_path, "r", encoding="utf8"),
     )
 
-    myDataset = MyDataset(data)
+    train_data = MyDataset(train_data)
 
-    myDataLoader = DataLoader(
-        myDataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+    train_dataloader = DataLoader(
+        train_data, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
     )
     model = MyModel().to(device)
     model.load_state_dict(torch.load(model_path))
     model.to(device)
+
     # 评估
     total_label = []
     total_predict = []
     model.eval()
     with torch.no_grad():
-        for batch_text_ids, batch_label in tqdm(myDataLoader):
+        for batch_text_ids, batch_label in tqdm(train_dataloader):
             output = model(batch_text_ids)
             batch_predict = torch.argmax(output, dim=-1).tolist()
 

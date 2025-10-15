@@ -1,4 +1,5 @@
-# 文本分类任务_naive_train
+# 文本分类任务_word2vec_train
+
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn import Module, Embedding, Linear, CrossEntropyLoss, Flatten
@@ -8,13 +9,17 @@ import pandas as pd
 import jieba
 from sklearn.metrics import accuracy_score
 import json
+import numpy as np
+import os
 
 
 # 定义模型结构
 class MyModel(Module):
     def __init__(self):
         super(MyModel, self).__init__()
+        # self.embedding = Embedding(len(word2id) + 1, word_dim)
         self.embedding = Embedding(len(word2id), word_dim)
+
         self.flatten = Flatten()  # 展平向量
         self.linear = Linear(max_len * word_dim, len(label2id))
 
@@ -68,39 +73,43 @@ def collate_fn(batch):
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    data_path = "data\Simplified_Chinese_Multi-Emotion_Dialogue_Dataset\Simplified_Chinese_Multi-Emotion_Dialogue_Dataset.csv"
     max_len = 128
     word_dim = 300
     batch_size = 6
-    learning_rate = 1e-3
-    epoch = 10
+    learning_rate = 1e-4
+    epoch = 100
+    train_data_path = "processed_data/train.json"
+    word2id_path = "processed_data/word2id.json"
+    label2id_path = "processed_data/label2id.json"
+    output_path = "output"
+    word2vec_path = "word2vec/word2vec.npy"
+    ################################################################################################
 
-    word_set = set()
-    label_set = set()
+    train_data = json.load(open(train_data_path, "r", encoding="utf-8"))
 
-    data = pd.read_csv(data_path)
-    data = data.to_dict("records")
-
-    for line in data:
-        label_set.add(line["label"])
-
-        for word in jieba.lcut(line["text"]):
-            word_set.add(word)
-    word_set.add("<|UNK|>")
-    word_set.add("<|PAD|>")
-
-    label2id = dict([(label, index) for index, label in enumerate(label_set)])
-    id2label = dict([(index, label) for index, label in enumerate(label_set)])
-
-    word2id = dict([(word, index) for index, word in enumerate(word_set)])
-    id2word = dict([(index, word) for index, word in enumerate(word_set)])
-
-    myDataset = MyDataset(data)
-
-    myDataLoader = DataLoader(
-        myDataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+    label2id = json.load(
+        open(label2id_path, "r", encoding="utf8"),
     )
-    model = MyModel().to(device)
+
+    word2id = json.load(
+        open(word2id_path, "r", encoding="utf8"),
+    )
+
+    train_dataset = MyDataset(train_data)
+
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+    )
+
+    model = MyModel()
+
+    word_vectors = np.load(word2vec_path)
+    word_vectors = torch.Tensor(word_vectors)
+
+    model.embedding.weight.data = word_vectors
+    model.embedding.requires_grad_(False)
+    model.to(device)
+
     optimizer = Adam(lr=learning_rate, params=model.parameters())
     loss_fn = CrossEntropyLoss()
 
@@ -108,7 +117,7 @@ if __name__ == "__main__":
     for per_epoch in range(epoch):
         # 训练
         model.train()
-        for batch_text_ids, batch_label in tqdm(myDataLoader):
+        for batch_text_ids, batch_label in tqdm(train_dataloader):
             optimizer.zero_grad()  # 梯度清零
             output = model(batch_text_ids)  # 前向传播
             loss = loss_fn(output, batch_label)  # 计算损失
@@ -122,7 +131,7 @@ if __name__ == "__main__":
         total_predict = []
         model.eval()
         with torch.no_grad():
-            for batch_text_ids, batch_label in tqdm(myDataLoader):
+            for batch_text_ids, batch_label in tqdm(train_dataloader):
                 output = model(batch_text_ids)
                 batch_predict = torch.argmax(output, dim=-1).tolist()
 
@@ -136,33 +145,5 @@ if __name__ == "__main__":
         if accuracy > best_acc:
             best_acc = accuracy
             # 只保存模型参数
-            torch.save(model.state_dict(), "save/Experiment_1/best_model.pth")
+            torch.save(model.state_dict(), os.path.join(output_path, "best_model.pth"))
             print(f"✅ 保存最佳模型，准确率: {accuracy:.4f}")
-
-    # 保存label2id、id2label、word2id、id2word以便后续推理
-    json.dump(
-        label2id,
-        open("save/Experiment_1/label2id.json", "w", encoding="utf8"),
-        indent=4,
-        ensure_ascii=False,
-    )
-
-    json.dump(
-        id2label,
-        open("save/Experiment_1/id2label.json", "w", encoding="utf8"),
-        indent=4,
-        ensure_ascii=False,
-    )
-    json.dump(
-        word2id,
-        open("save/Experiment_1/word2id.json", "w", encoding="utf8"),
-        indent=4,
-        ensure_ascii=False,
-    )
-
-    json.dump(
-        id2word,
-        open("save/Experiment_1/id2word.json", "w", encoding="utf8"),
-        indent=4,
-        ensure_ascii=False,
-    )

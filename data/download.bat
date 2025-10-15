@@ -1,0 +1,2 @@
+modelscope download --dataset zhangzhihao/Simplified_Chinese_Multi-Emotion_Dialogue_Dataset --local_dir ./Simplified_Chinese_Multi-Emotion_Dialogue_Dataset
+modelscope download --dataset zhangzhihao/SemEval2010-Task8-Chinese --local_dir ./SemEval2010-Task8-Chinese

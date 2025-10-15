@@ -3,7 +3,7 @@ import numpy as np
 from tqdm import tqdm
 import json
 
-word2vec_path = "word2vec/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5"
+word2vec_path = "../pretrained_models/word2vec/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5"
 
 # 读取原始word2vec权重
 with open(word2vec_path, "r", encoding="utf8") as r:
@@ -40,20 +40,20 @@ with open(word2vec_path, "r", encoding="utf8") as r:
     vec_list = np.stack(vec_list)
 
 
-word_to_index = dict([(word, index) for index, word in enumerate(word_list)])
-index_to_word = dict([(int(index), word) for index, word in enumerate(word_list)])
+word2id = dict([(word, index) for index, word in enumerate(word_list)])
+id2word = dict([(int(index), word) for index, word in enumerate(word_list)])
 
-# 保存word_to_index
+# 保存word2id
 json.dump(
-    word_to_index,
-    open("word2vec/word_to_index.json", "w", encoding="utf8"),
+    word2id,
+    open("processed_data/word2id.json", "w", encoding="utf8"),
     indent=4,
     ensure_ascii=False,
 )
-# 保存word_to_index
+# 保存id2word
 json.dump(
-    index_to_word,
-    open("word2vec/index_to_word.json", "w", encoding="utf8"),
+    id2word,
+    open("processed_data/id2word.json", "w", encoding="utf8"),
     indent=4,
     ensure_ascii=False,
 )
