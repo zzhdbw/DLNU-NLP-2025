@@ -5,10 +5,11 @@ import jieba
 import json
 
 if __name__ == "__main__":
+
     data_path = "../data/Simplified_Chinese_Multi-Emotion_Dialogue_Dataset/Simplified_Chinese_Multi-Emotion_Dialogue_Dataset.csv"
 
     data = pd.read_csv(data_path)
-    print(data)
+
     data = data.to_dict("records")
 
     word_set = set()

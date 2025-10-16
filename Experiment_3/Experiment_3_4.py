@@ -1,4 +1,4 @@
-# 文本分类任务_naive_infer
+# 关系抽取任务_train
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn import Module, Embedding, Linear, CrossEntropyLoss, Flatten

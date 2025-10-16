@@ -1,0 +1,1 @@
+modelscope download --model zhangzhihao/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5 --local_dir ./word2vec

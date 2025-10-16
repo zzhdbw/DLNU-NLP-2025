@@ -1,4 +1,4 @@
-# 文本分类任务_处理word2vec
+# 关系抽取任务_处理word2vec
 import numpy as np
 from tqdm import tqdm
 import json

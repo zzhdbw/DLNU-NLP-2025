@@ -211,4 +211,6 @@ __marimo__/
 */output/*
 */processed_data/*
 pretrained_models/*
-!pretrained_models/download.bat
+!pretrained_models/download_bert.bat
+!pretrained_models/download_word2vec.bat
+*/.gitkeep
