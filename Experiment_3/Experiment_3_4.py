@@ -11,6 +11,8 @@ import json
 import numpy as np
 import os
 
+jieba.re_han_default = re.compile(r"([\u4E00-\u9FD5a-zA-Z0-9+#&\._%\-<>\/\|]+)", re.U)
+
 
 class MyModel(Module):
     def __init__(self):
