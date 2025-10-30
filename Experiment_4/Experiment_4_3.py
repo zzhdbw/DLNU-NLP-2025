@@ -1,33 +1,52 @@
-# 关系抽取任务_train
+# 关系抽取任务_bert训练
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn import Module, Embedding, Linear, CrossEntropyLoss, Flatten
 from torch.optim import Adam
 from tqdm import tqdm
 import pandas as pd
-import jieba
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+)
 import json
 import numpy as np
 import os
 import re
 
-jieba.re_han_default = re.compile(r"([\u4E00-\u9FD5a-zA-Z0-9+#&\._%\-<>\/\|]+)", re.U)
+import transformers
+from transformers import BertTokenizer, BertModel
 
 
 class MyModel(Module):
-    def __init__(self):
+    def __init__(self, model_name):
         super(MyModel, self).__init__()
-        # self.embedding = Embedding(len(word2id) + 1, word_dim)
-        self.embedding = Embedding(len(word2id), word_dim)
+        self.bert = BertModel.from_pretrained(model_name)
+        self.bert.resize_token_embeddings(
+            len(tokenizer)
+        )  # 调整BERT模型的词嵌入层,以匹配tokenizer的词汇表大小
 
-        self.flatten = Flatten()  # 展平向量
-        self.linear = Linear(max_len * word_dim, len(label2id))
+        # # 冻结BERT模型参数,可以减少训练参数数量,加速训练
+        # for param in self.bert.parameters():
+        #     param.requires_grad = False
+        self.linear = Linear(768, len(label2id))
 
-    def forward(self, input):
-        output = self.embedding(input)
-        output = self.flatten(output)
-        output = self.linear(output)
+    def forward(
+        self,
+        input_ids,
+        attention_mask,
+        token_type_ids,
+    ):
+        output = self.bert(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+        )
+        last_hidden_state = output.pooler_output
+
+        output = self.linear(last_hidden_state)
         return output
 
 
@@ -40,7 +59,7 @@ class MyDataset(Dataset):
 
         for line in data:
             self.labels.append(line["label"])
-            self.texts.append(jieba.lcut(line["text"]))
+            self.texts.append(line["text"])
 
     def __getitem__(self, item):
         return self.texts[item], self.labels[item]
@@ -51,42 +70,44 @@ class MyDataset(Dataset):
 
 # 定义批处理流程
 def collate_fn(batch):
-    batch_text = []
+
     batch_label = []
+    text_list = []
 
     for text, label in batch:
-        text = [word2id.get(word, word2id["<|UNK|>"]) for word in text]
-        label = label2id[label]
+        text_list.append(text)
+        batch_label.append(label2id[label])
 
-        if len(text) > max_len:  # 截断操作
-            text = text[:max_len]
-        if len(text) < max_len:  # 填充
-            text.extend([word2id["<|PAD|>"]] * (max_len - len(text)))
+    batch_tokenized_text = tokenizer(
+        text_list, padding=True, truncation=True, return_tensors="pt"
+    )
 
-        batch_text.append(text)
-        batch_label.append(label)
-
-    batch_text = torch.LongTensor(batch_text)
     batch_label = torch.LongTensor(batch_label)
-    return batch_text.to(device), batch_label.to(device)
+    return batch_tokenized_text.to(device), batch_label.to(device)
 
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_data_path = "processed_data/train.json"
-    test_data_path = "processed_data/test.json"
     max_len = 128
     word_dim = 300
     batch_size = 6
     learning_rate = 1e-4
     epoch = 10
-    word2id_path = "processed_data/word2id.json"
-    id2word_path = "processed_data/id2word.json"
+
+    train_data_path = "processed_data/train.json"
+    test_data_path = "processed_data/test.json"
     label2id_path = "processed_data/label2id.json"
     id2label_path = "processed_data/id2label.json"
     output_path = "output"
+    model_name = "../pretrained_models/bert-base-chinese"
     ############################################################
+
+    tokenizer = BertTokenizer.from_pretrained(model_name)
+    special_tokens_dict = {
+        "additional_special_tokens": ["<e1>", "</e1>", "<e2>", "</e2>"]
+    }
+    tokenizer.add_special_tokens(special_tokens_dict)
 
     label2id = json.load(
         open(label2id_path, "r", encoding="utf8"),
@@ -94,12 +115,6 @@ if __name__ == "__main__":
 
     id2label = json.load(
         open(id2label_path, "r", encoding="utf8"),
-    )
-    word2id = json.load(
-        open(word2id_path, "r", encoding="utf8"),
-    )
-    id2word = json.load(
-        open(id2word_path, "r", encoding="utf8"),
     )
 
     train_data = json.load(open(train_data_path, "r", encoding="utf8"))
@@ -114,12 +129,7 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(
         test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
     )
-    model = MyModel()
-    word_vectors = np.load("word2vec/word2vec.npy")
-    word_vectors = torch.Tensor(word_vectors)
-
-    model.embedding.weight.data = word_vectors
-    model.embedding.requires_grad_(False)  # 冻结词向量层，加速训练但是损失效果
+    model = MyModel(model_name)
     model.to(device)
 
     optimizer = Adam(lr=learning_rate, params=model.parameters())
@@ -129,35 +139,45 @@ if __name__ == "__main__":
     for per_epoch in range(epoch):
         # 训练
         model.train()
-        for batch_text_ids, batch_label in tqdm(train_dataloader):
+        train_bar = tqdm(train_dataloader)
+        for batch_tokenized_text, batch_label in train_bar:
             optimizer.zero_grad()  # 梯度清零
-            output = model(batch_text_ids)  # 前向传播
+            output = model(**batch_tokenized_text)  # 前向传播
+
             loss = loss_fn(output, batch_label)  # 计算损失
 
             loss.backward()  # 反向传播
             optimizer.step()  # 梯度下降
-            # print(f"{loss.item():.4}")
+
+            train_bar.set_description(f"Epoch {per_epoch+1}/{epoch}")
+            train_bar.set_postfix(loss=loss.item())
 
         # 评估
         total_label = []
         total_predict = []
         model.eval()
         with torch.no_grad():
-            for batch_text_ids, batch_label in tqdm(train_dataloader):
-                output = model(batch_text_ids)
+            for batch_tokenized_text, batch_label in tqdm(train_dataloader):
+                output = model(**batch_tokenized_text)
                 batch_predict = torch.argmax(output, dim=-1).tolist()
 
                 total_label.extend(batch_label.tolist())
                 total_predict.extend(batch_predict)
         train_accuracy = accuracy_score(total_label, total_predict)
+        train_f1 = f1_score(total_label, total_predict, average="macro")
+        train_precision = precision_score(total_label, total_predict, average="macro")
+        train_recall = recall_score(total_label, total_predict, average="macro")
         print(f"训练集准确率: {train_accuracy:.4f}")
+        print(f"训练集F1: {train_f1:.4f}")
+        print(f"训练集精确率: {train_precision:.4f}")
+        print(f"训练集召回率: {train_recall:.4f}")
 
         total_label = []
         total_predict = []
         model.eval()
         with torch.no_grad():
-            for batch_text_ids, batch_label in tqdm(test_dataloader):
-                output = model(batch_text_ids)
+            for batch_tokenized_text, batch_label in tqdm(test_dataloader):
+                output = model(**batch_tokenized_text)
                 batch_predict = torch.argmax(output, dim=-1).tolist()
 
                 total_label.extend(batch_label.tolist())
@@ -165,7 +185,13 @@ if __name__ == "__main__":
 
         # 使用sklearn计算准确率
         accuracy = accuracy_score(total_label, total_predict)
+        f1 = f1_score(total_label, total_predict, average="macro")
+        precision = precision_score(total_label, total_predict, average="macro")
+        recall = recall_score(total_label, total_predict, average="macro")
         print(f"测试集准确率: {accuracy:.4f}")
+        print(f"测试集F1: {f1:.4f}")
+        print(f"测试集精确率: {precision:.4f}")
+        print(f"测试集召回率: {recall:.4f}")
 
         if accuracy > best_acc:
             best_acc = accuracy
