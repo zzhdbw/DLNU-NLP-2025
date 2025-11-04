@@ -1,8 +1,8 @@
-pandas
-tqdm
-jieba
-scikit-learn
-modelscope
-packaging
-datasets
-transformers
+pandas==2.3.3
+tqdm==4.67.1
+jieba==0.42.1
+scikit-learn==1.7.2
+modelscope==1.31.0
+packaging==25.0
+datasets==4.2.0
+transformers==4.57.1

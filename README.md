@@ -32,6 +32,14 @@ pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https
 
 
 
+### 安装其他包
+
+```sh
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+```
+
+
+
 ## 数据集下载
 
 参考网址：
@@ -117,3 +125,16 @@ Experiment_3_3.py  word2vec权重处理代码
 Experiment_3_4.py 模型训练代码
 
 Experiment_3_5.py 模型训练代码
+
+
+
+### Experiment_4
+
+Experiment_4_0.py 数据处理代码
+
+Experiment_4_1.py BERT初探
+
+Experiment_4_2.py BERT初探
+
+Experiment_4_3.py BERT关系分类训练
+
