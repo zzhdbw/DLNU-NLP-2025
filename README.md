@@ -138,3 +138,16 @@ Experiment_4_2.py BERT初探
 
 Experiment_4_3.py BERT关系分类训练
 
+### Experiment_5
+
+Experiment_5_0.py 大模型初探-本地
+
+Experiment_5_1.py 本地大模型-关系抽取推理-单条
+
+Experiment_5_2.py 关系抽取任务_本地大模型-关系抽取推理-评估
+
+Experiment_5_3.py 关系抽取任务_在线大模型-初探
+
+Experiment_5_4.py 关系抽取任务_在线大模型-关系抽取-评估
+
+Experiment_5_5.py 关系抽取任务_本地大模型-关系抽取-训练
