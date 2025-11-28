@@ -6,3 +6,6 @@ modelscope==1.31.0
 packaging==25.0
 datasets==4.2.0
 transformers==4.57.1
+accelerate==1.12.0
+openai==2.8.1
+peft

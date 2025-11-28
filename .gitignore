@@ -213,4 +213,5 @@ __marimo__/
 pretrained_models/*
 !pretrained_models/download_bert.bat
 !pretrained_models/download_word2vec.bat
+!pretrained_models/download_qwen.bat
 !*/.gitkeep
